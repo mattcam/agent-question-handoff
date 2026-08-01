@@ -33,19 +33,19 @@ sequenceDiagram
 
 | # | Title | Prompt | Policy | Reviewed |
 |---|-------|--------|--------|----------|
-| A | Asks a question | Not applicable. This step takes the question in and does not use a prompt. | [intake](#a-intake) | No |
-| B | Checks the question against policy | Read the question below. Name the topic in one or two words. Say whether that topic is on the allowed list or the handoff list. If you cannot place it, say unknown. Do not answer the question. | [topic-check](#b-topic-check) | No |
-| C | Returns answer or hand off | Not applicable. This step records the decision and does not use a prompt. | [decision-record](#c-decision-record) | No |
-| D | Searches approved sources | Turn the question into a short search query. Use the words the person used. Return the query and nothing else. | [source-list](#d-source-list) | No |
-| E | Returns matching material | Not applicable. This step returns passages from the sources and does not use a prompt. | [evidence](#e-evidence) | No |
-| F | Checks the draft answer against the material | Here is a draft answer and the material it came from. For every sentence in the draft, name the passage that supports it. Delete any sentence you cannot support. Return the remaining answer and the list of sources. If no sentence survives, return NO ANSWER. | [grounding](#f-grounding) | No |
-| G | Gives the answer with its sources | Answer the question in plain English using only the checked material. Keep it under 150 words. List the sources at the end. If the material does not answer the question, say that instead. | [response](#g-response) | No |
-| H | Hands over the question and what it found | Write a short handover note for a human specialist. Include the question, the topic, the reason the agent stopped and any material that was found. Do not include a draft answer. | [handoff](#h-handoff) | No |
-| I | Answers the person | Not applicable. A human writes this answer. | [human-response](#i-human-response) | No |
+| (A) | Asks a question | Not applicable. This step takes the question in and does not use a prompt. | [intake](#a-intake) | No |
+| (B) | Checks the question against policy | Read the question below. Name the topic in one or two words. Say whether that topic is on the allowed list or the handoff list. If you cannot place it, say unknown. Do not answer the question. | [topic-check](#b-topic-check) | No |
+| (C) | Returns answer or hand off | Not applicable. This step records the decision and does not use a prompt. | [decision-record](#c-decision-record) | No |
+| (D) | Searches approved sources | Turn the question into a short search query. Use the words the person used. Return the query and nothing else. | [source-list](#d-source-list) | No |
+| (E) | Returns matching material | Not applicable. This step returns passages from the sources and does not use a prompt. | [evidence](#e-evidence) | No |
+| (F) | Checks the draft answer against the material | Here is a draft answer and the material it came from. For every sentence in the draft, name the passage that supports it. Delete any sentence you cannot support. Return the remaining answer and the list of sources. If no sentence survives, return NO ANSWER. | [grounding](#f-grounding) | No |
+| (G) | Gives the answer with its sources | Answer the question in plain English using only the checked material. Keep it under 150 words. List the sources at the end. If the material does not answer the question, say that instead. | [response](#g-response) | No |
+| (H) | Hands over the question and what it found | Write a short handover note for a human specialist. Include the question, the topic, the reason the agent stopped and any material that was found. Do not include a draft answer. | [handoff](#h-handoff) | No |
+| (I) | Answers the person | Not applicable. A human writes this answer. | [human-response](#i-human-response) | No |
 
 ## Policy documents
 
-### A intake
+### (A) intake
 
 ```json
 {
@@ -57,7 +57,7 @@ sequenceDiagram
 }
 ```
 
-### B topic-check
+### (B) topic-check
 
 ```json
 {
@@ -69,7 +69,7 @@ sequenceDiagram
 }
 ```
 
-### C decision-record
+### (C) decision-record
 
 ```json
 {
@@ -79,7 +79,7 @@ sequenceDiagram
 }
 ```
 
-### D source-list
+### (D) source-list
 
 ```json
 {
@@ -90,7 +90,7 @@ sequenceDiagram
 }
 ```
 
-### E evidence
+### (E) evidence
 
 ```json
 {
@@ -102,7 +102,7 @@ sequenceDiagram
 }
 ```
 
-### F grounding
+### (F) grounding
 
 ```json
 {
@@ -114,7 +114,7 @@ sequenceDiagram
 }
 ```
 
-### G response
+### (G) response
 
 ```json
 {
@@ -127,7 +127,7 @@ sequenceDiagram
 }
 ```
 
-### H handoff
+### (H) handoff
 
 ```json
 {
@@ -140,7 +140,7 @@ sequenceDiagram
 }
 ```
 
-### I human-response
+### (I) human-response
 
 ```json
 {
