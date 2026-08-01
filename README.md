@@ -2,145 +2,168 @@
 
 ## The requirement
 
-A person asks a question. An agent decides whether it is allowed to answer that question. The decision is made against a written policy. If the agent answers, the answer must be supported by approved source material and nothing else. If the agent cannot answer, or the answer is not supported, it hands the question to a human.
+A person asks a question. An agent works out whether the question is one it is allowed to answer. If it is, the agent answers using approved source material and nothing else. If the question is outside what the agent covers, or the approved material does not answer it, the question goes to a person.
+
+The answer must not be made up. That is not done by asking the agent to be careful. It is done by limiting what the agent is given to work with, so there is nothing to make up from, and by sending the question to a person the moment the material runs out.
 
 ## Sequence diagram
 
 ```mermaid
 sequenceDiagram
     actor Person
+    participant Screen as Safety screen
     participant Agent
-    participant Policy as Policy service
     participant Sources as Approved sources
     actor Specialist as Human specialist
 
-    Person->>Agent: (A) Asks a question
-    Agent->>Policy: (B) Checks the question against policy
-    Policy-->>Agent: (C) Returns answer or hand off
-    Agent->>Sources: (D) Searches approved sources
-    Sources-->>Agent: (E) Returns matching material
-    Agent->>Agent: (F) Checks the draft answer against the material
+    Person->>Screen: (A) Asks a question
+    Screen->>Agent: (B) Passes the question on with personal details hidden
+    Agent->>Agent: (C) Sorts the question into a topic
 
-    alt Allowed and fully supported
-        Agent->>Person: (G) Gives the answer with its sources
-    else Not allowed or not supported
-        Agent->>Specialist: (H) Hands over the question and what it found
+    Note over Agent: A topic can only use the actions it has been given
+
+    alt Topic is allowed to answer from approved material
+        Agent->>Sources: (D) Runs the search action
+        Sources-->>Agent: (E) Returns passages, or nothing
+        opt Passages came back
+            Agent->>Screen: (F) Writes an answer from those passages only
+            Screen->>Person: (G) Returns the answer with its sources
+        end
+    end
+
+    opt No topic matched, or nothing came back
+        Agent->>Specialist: (H) Runs the handover action
         Specialist->>Person: (I) Answers the person
     end
 ```
 
 ## Flow table
 
-| # | Title | Prompt | Policy | Reviewed |
-|---|-------|--------|--------|----------|
-| (A) | Asks a question | Not applicable. This step takes the question in and does not use a prompt. | [intake](#a-intake) | No |
-| (B) | Checks the question against policy | Read the question below. Name the topic in one or two words. Say whether that topic is on the allowed list or the handoff list. If you cannot place it, say unknown. Do not answer the question. | [topic-check](#b-topic-check) | No |
-| (C) | Returns answer or hand off | Not applicable. This step records the decision and does not use a prompt. | [decision-record](#c-decision-record) | No |
-| (D) | Searches approved sources | Turn the question into a short search query. Use the words the person used. Return the query and nothing else. | [source-list](#d-source-list) | No |
-| (E) | Returns matching material | Not applicable. This step returns passages from the sources and does not use a prompt. | [evidence](#e-evidence) | No |
-| (F) | Checks the draft answer against the material | Here is a draft answer and the material it came from. For every sentence in the draft, name the passage that supports it. Delete any sentence you cannot support. Return the remaining answer and the list of sources. If no sentence survives, return NO ANSWER. | [grounding](#f-grounding) | No |
-| (G) | Gives the answer with its sources | Answer the question in plain English using only the checked material. Keep it under 150 words. List the sources at the end. If the material does not answer the question, say that instead. | [response](#g-response) | No |
-| (H) | Hands over the question and what it found | Write a short handover note for a human specialist. Include the question, the topic, the reason the agent stopped and any material that was found. Do not include a draft answer. | [handoff](#h-handoff) | No |
-| (I) | Answers the person | Not applicable. A human writes this answer. | [human-response](#i-human-response) | No |
+| # | Title | Prompt, asked of the model | Policy, enforced in the build | Reviewed |
+|---|-------|----------------------------|-------------------------------|----------|
+| (A) | Asks a question | Not applicable. The question arrives before the model has a turn. | [intake](#a-intake) | No |
+| (B) | Passes the question on with personal details hidden | Not applicable. This screen runs on every question and the agent cannot skip it. | [safety-screen](#b-safety-screen) | No |
+| (C) | Sorts the question into a topic | Read the question. Match it to one of the topics below using each topic description. Return the topic name only. If none of them fit, return no topic. | [topics](#c-topics) | No |
+| (D) | Runs the search action | Turn the question into a short search query. Use the words the person used. Return the query and nothing else. | [search-action](#d-search-action) | No |
+| (E) | Returns passages, or nothing | Not applicable. The search returns what it finds. | [evidence](#e-evidence) | No |
+| (F) | Writes an answer from those passages only | Answer the question using only the passages below. Do not use anything you know from outside them. Keep it under 150 words in plain English. Name the passage behind each point. If the passages do not cover the question, say so and offer to pass it to a person. | [grounding](#f-grounding) | No |
+| (G) | Returns the answer with its sources | Not applicable. The screen checks the answer and adds the sources on the way out. | [response](#g-response) | No |
+| (H) | Runs the handover action | Write a short handover note for a person. Include the question, the topic, the reason the agent stopped and any passages that were found. Do not include a draft answer. | [handover](#h-handover) | No |
+| (I) | Answers the person | Not applicable. A person writes this answer. | [human-response](#i-human-response) | No |
+
+Read the last two columns as a pair. The prompt column is what the model is asked to do and a request can be turned down. The policy column is what the build makes true whether the model cooperates or not. Anything that has to hold every single time belongs in the policy column.
 
 ## Policy documents
 
-### (A) intake
+### A intake
 
 ```json
 {
   "id": "intake",
   "channels": ["web chat", "email"],
   "max_question_length": 1000,
-  "strip_personal_data": true,
   "log_question": true
 }
 ```
 
-### (B) topic-check
+### B safety-screen
 
 ```json
 {
-  "id": "topic-check",
-  "allowed_topics": ["account setup", "billing basics", "product features", "how to guides"],
-  "handoff_topics": ["refunds", "legal", "security incidents", "health", "complaints"],
-  "on_unknown_topic": "hand off",
-  "person_can_ask_for_a_human": true
+  "id": "safety-screen",
+  "runs_on": ["every question in", "every answer out"],
+  "hide_personal_details": ["name", "email", "phone", "card number"],
+  "block_harmful_language": true,
+  "keep_audit_record": true,
+  "agent_can_skip_this": false
 }
 ```
 
-### (C) decision-record
+### C topics
 
 ```json
 {
-  "id": "decision-record",
-  "record": ["question_id", "topic", "decision", "reason", "timestamp"],
-  "retention_days": 90
+  "id": "topics",
+  "topics": [
+    {
+      "name": "product help",
+      "covers": ["account setup", "billing basics", "product features", "how to guides"],
+      "actions": ["search approved sources", "hand over to a person"]
+    },
+    {
+      "name": "needs a person",
+      "covers": ["refunds", "legal", "security", "health", "complaints", "the person asked for a human"],
+      "actions": ["hand over to a person"]
+    }
+  ],
+  "no_topic_matched": "hand over to a person"
 }
 ```
 
-### (D) source-list
+### D search-action
 
 ```json
 {
-  "id": "source-list",
+  "id": "search-action",
   "sources": ["help centre", "published release notes", "pricing page"],
-  "exclude": ["internal notes", "draft pages", "the model's own knowledge"],
-  "max_results": 5
+  "exclude": ["internal notes", "draft pages"],
+  "max_passages": 5,
+  "available_to_topics": ["product help"]
 }
 ```
 
-### (E) evidence
+### E evidence
 
 ```json
 {
   "id": "evidence",
-  "min_results": 1,
+  "min_passages": 1,
   "max_age_days": 180,
   "require_source_url": true,
-  "on_no_results": "hand off"
+  "on_nothing_found": "hand over to a person"
 }
 ```
 
-### (F) grounding
+### F grounding
 
 ```json
 {
   "id": "grounding",
-  "every_sentence_needs_a_source": true,
-  "allow_outside_knowledge": false,
-  "min_supported_ratio": 1.0,
-  "on_fail": "hand off"
+  "the_model_is_given": ["the question", "the passages that came back"],
+  "outside_knowledge": "not available to the model",
+  "every_point_needs_a_passage": true,
+  "if_the_passages_fall_short": "say so and offer a person"
 }
 ```
 
-### (G) response
+### G response
 
 ```json
 {
   "id": "response",
   "max_words": 150,
   "show_sources": true,
+  "screen_before_sending": true,
   "no_advice_topics": ["legal", "health", "financial"],
-  "tone": "plain English",
-  "say_when_the_material_falls_short": true
+  "tone": "plain English"
 }
 ```
 
-### (H) handoff
+### H handover
 
 ```json
 {
-  "id": "handoff",
-  "reasons": ["topic not allowed", "topic unknown", "no supporting material", "answer not supported", "person asked for a human"],
-  "include": ["question", "topic", "reason", "sources found"],
-  "exclude": ["unchecked draft answer"],
-  "target_queue": "support specialists",
+  "id": "handover",
+  "is_an_action_the_agent_can_run": true,
+  "reasons": ["no topic matched", "topic needs a person", "nothing found in the sources", "the person asked for a human"],
+  "include": ["question", "topic", "reason", "passages found"],
+  "exclude": ["unsent draft answer"],
+  "queue": "support specialists",
   "tell_the_person": true
 }
 ```
 
-### (I) human-response
+### I human-response
 
 ```json
 {
@@ -151,8 +174,14 @@ sequenceDiagram
 }
 ```
 
-## How the agent avoids making things up
+## Why the agent cannot make the answer up
 
-The agent never answers from memory. It answers only from the passages returned at step (E). Step (F) checks every sentence against those passages and deletes any sentence it cannot match. If nothing survives that check, the question goes to a human at step (H).
+At step (F) the model is handed the question and the passages from step (E). It has nothing else. There is no step where the agent writes an answer from memory and something else checks it afterwards, because a check like that is only as good as the model doing the checking.
+
+Three things carry the requirement and none of them are wording in a prompt:
+
+1. A topic can only run the actions it has been given, so a question about refunds has no way to reach the search action.
+2. The search only reaches approved sources, so the passages are the whole of what the model has to draw on.
+3. An empty search result runs the handover action. Nothing found means a person answers, not that the agent tries harder.
 
 Author: mattcam
